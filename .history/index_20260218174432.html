@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Supabase Google Login</title>
+</head>
+<body>
+
+  <h2>Google Login Test</h2>
+  <div id="user-info"></div>
+  <button id="login">Login with Google</button>
+  <button id="logout">Logout</button>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+    const supabaseUrl = "https://lyefoiimojoelvnzcvzh.supabase.co";
+    const supabaseKey = "sb_publishable_UGT6KqcuoJeqMFW4gJqSvw_x1QDqcRU";
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const userInfoDiv = document.getElementById("user-info");
+
+    // LOGIN
+    document.getElementById("login").addEventListener("click", async () => {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: "http://127.0.0.1:5500/"
+        }
+      });
+    });
+
+    // LOGOUT
+    document.getElementById("logout").addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      location.reload();
+    });
+
+    // SESSION CHECK
+    window.addEventListener("load", async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        userInfoDiv.innerHTML = `
+          <p>Login Successful ✅</p>
+          <p>Email: ${session.user.email}</p>
+        `;
+      }
+    });
+
+  </script>
+
+</body>
+</html>

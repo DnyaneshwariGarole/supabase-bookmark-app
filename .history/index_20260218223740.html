@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Supabase Bookmark App</title>
+</head>
+<body>
+
+  <h2>Google Login Test</h2>
+  <div id="user-info"></div>
+  <button id="login">Login with Google</button>
+  <button id="logout">Logout</button>
+
+  <hr>
+
+  <h3>Add Bookmark</h3>
+  <input type="text" id="title" placeholder="Enter title">
+  <input type="text" id="url" placeholder="Enter URL">
+  <button id="add-bookmark">Add</button>
+
+  <h3>Your Bookmarks</h3>
+  <ul id="bookmark-list"></ul>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+    const supabaseUrl = "https://lyefoiimojoelvnzcvzh.supabase.co";
+    const supabaseKey = "sb_publishable_UGT6KqcuoJeqMFW4gJqSvw_x1QDqcRU";
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const userInfoDiv = document.getElementById("user-info");
+    const titleInput = document.getElementById("title");
+    const urlInput = document.getElementById("url");
+    const addBtn = document.getElementById("add-bookmark");
+    const bookmarkList = document.getElementById("bookmark-list");
+
+    // LOGIN
+    document.getElementById("login").addEventListener("click", async () => {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+    });
+
+    // LOGOUT
+    document.getElementById("logout").addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      location.reload();
+    });
+
+    // LOAD BOOKMARKS
+    async function loadBookmarks() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase
+        .from("bookmarks")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.log(error);
+        return;
+      }
+
+      bookmarkList.innerHTML = "";
+
+      data.forEach(bookmark => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <a href="${bookmark.url}" target="_blank">${bookmark.title}</a>
+          <button onclick="deleteBookmark('${bookmark.id}')">Delete</button>
+        `;
+        bookmarkList.appendChild(li);
+      });
+    }
+
+    // ADD BOOKMARK
+    addBtn.addEventListener("click", async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return alert("Login first");
+
+      const { error } = await supabase
+        .from("bookmarks")
+        .insert([
+          {
+            title: titleInput.value,
+            url: urlInput.value,
+            user_id: session.user.id
+          }
+        ]);
+
+      if (error) {
+        console.log(error);
+        alert("Error adding bookmark");
+      } else {
+        titleInput.value = "";
+        urlInput.value = "";
+      }
+    });
+
+    // DELETE BOOKMARK
+    window.deleteBookmark = async function(id) {
+      await supabase.from("bookmarks").delete().eq("id", id);
+    };
+
+    // REALTIME SUBSCRIPTION
+    supabase
+      .channel("bookmarks-channel")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "bookmarks" },
+        () => {
+          loadBookmarks();
+        }
+      )
+      .subscribe();
+
+    // SESSION CHECK
+    window.addEventListener("load", async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        userInfoDiv.innerHTML = `
+          <p>Login Successful ✅</p>
+          <p>Email: ${session.user.email}</p>
+        `;
+        loadBookmarks();
+      }
+    });
+
+  </script>
+
+</body>
+</html>

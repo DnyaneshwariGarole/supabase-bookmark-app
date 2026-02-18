@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Supabase Google Login</title>
+</head>
+<body>
+
+  <h2>Google Login Test</h2>
+  <div id="user-info"></div>
+  <button id="login">Login with Google</button>
+  <button id="logout">Logout</button>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+    const supabaseUrl = "https://lyefoiimojoelvnzcvzh.supabase.co";
+    const supabaseKey = "sb_publishable_UGT6KqcuoJeqMFW4gJqSvw_x1QDqcRU"; 
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const loginBtn = document.getElementById("login");
+    const logoutBtn = document.getElementById("logout");
+    const userInfoDiv = document.getElementById("user-info");
+
+    // Login using popup (redirect avoid)
+    loginBtn.addEventListener("click", async () => {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.href } // same page, no refresh
+      });
+      if(error) console.error("Login error:", error.message);
+    });
+
+    // Logout
+    logoutBtn.addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      userInfoDiv.innerHTML = "";
+      alert("Logged out");
+    });
+
+    // Detect login state changes
+    supabase.auth.onAuthStateChange((event, session) => {
+      if(session && session.user){
+        userInfoDiv.innerHTML = `
+          <p>Welcome, ${session.user.email}</p>
+          <p>User ID: ${session.user.id}</p>
+        `;
+        console.log("User logged in:", session.user);
+      } else {
+        userInfoDiv.innerHTML = "";
+        console.log("No user logged in");
+      }
+    });
+
+    // Check session on page load
+    window.addEventListener("load", async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if(session && session.user){
+        userInfoDiv.innerHTML = `
+          <p>Welcome back, ${session.user.email}</p>
+        `;
+      }
+    });
+
+    await supabase.auth.signInWithOAuth({
+  provider: "google",
+  options: {
+    redirectTo: "http://127.0.0.1:5500"
+  }
+});
+
+
+  </script>
+
+</body>
+</html>

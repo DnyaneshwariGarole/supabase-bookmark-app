@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Supabase Bookmark App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #f0f2f5, #e4e6eb);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      background: white;
+      width: 100%;
+      max-width: 550px;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .button-group {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+      transition: 0.2s ease;
+    }
+
+    .btn-primary {
+      background-color: #4285f4;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #3367d6;
+    }
+
+    .btn-secondary {
+      background-color: #dc3545;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background-color: #b02a37;
+    }
+
+    .btn-success {
+      background-color: #28a745;
+      color: white;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .btn-success:hover {
+      background-color: #218838;
+    }
+
+    .section {
+      margin-top: 25px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 15px;
+    }
+
+    li {
+      background: #f8f9fa;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    li a {
+      text-decoration: none;
+      color: #333;
+      font-weight: 500;
+    }
+
+    .delete-btn {
+      background-color: #dc3545;
+      color: white;
+      padding: 5px 10px;
+      font-size: 12px;
+      border-radius: 6px;
+    }
+
+    .delete-btn:hover {
+      background-color: #b02a37;
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 20px;
+      }
+
+      h2 {
+        font-size: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Google Login Test</h2>
+
+    <div id="user-info" style="text-align:center; margin-bottom:15px;"></div>
+
+    <div class="button-group">
+      <button id="login" class="btn-primary">Login with Google</button>
+      <button id="logout" class="btn-secondary">Logout</button>
+    </div>
+
+    <div class="section">
+      <h3>Add Bookmark</h3>
+      <input type="text" id="title" placeholder="Enter title">
+      <input type="text" id="url" placeholder="Enter URL">
+      <button id="add-bookmark" class="btn-success">Add Bookmark</button>
+    </div>
+
+    <div class="section">
+      <h3>Your Bookmarks</h3>
+      <ul id="bookmark-list"></ul>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+    const supabaseUrl = "https://lyefoiimojoelvnzcvzh.supabase.co";
+    const supabaseKey = "sb_publishable_UGT6KqcuoJeqMFW4gJqSvw_x1QDqcRU";
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const userInfoDiv = document.getElementById("user-info");
+    const titleInput = document.getElementById("title");
+    const urlInput = document.getElementById("url");
+    const addBtn = document.getElementById("add-bookmark");
+    const bookmarkList = document.getElementById("bookmark-list");
+
+    document.getElementById("login").addEventListener("click", async () => {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin }
+      });
+    });
+
+    document.getElementById("logout").addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      location.reload();
+    });
+
+    async function loadBookmarks() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data } = await supabase
+        .from("bookmarks")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false });
+
+      bookmarkList.innerHTML = "";
+
+      data.forEach(bookmark => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <a href="${bookmark.url}" target="_blank">${bookmark.title}</a>
+          <button class="delete-btn" onclick="deleteBookmark('${bookmark.id}')">Delete</button>
+        `;
+        bookmarkList.appendChild(li);
+      });
+    }
+
+    addBtn.addEventListener("click", async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return alert("Login first");
+
+      await supabase.from("bookmarks").insert([
+        {
+          title: titleInput.value,
+          url: urlInput.value,
+          user_id: session.user.id
+        }
+      ]);
+
+      titleInput.value = "";
+      urlInput.value = "";
+    });
+
+    window.deleteBookmark = async function(id) {
+      await supabase.from("bookmarks").delete().eq("id", id);
+    };
+
+    supabase
+      .channel("bookmarks-channel")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "bookmarks" },
+        () => loadBookmarks()
+      )
+      .subscribe();
+
+    window.addEventListener("load", async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        userInfoDiv.innerHTML = `
+          <p><strong>Login Successful</strong></p>
+          <p>${session.user.email}</p>
+        `;
+        loadBookmarks();
+      }
+    });
+  </script>
+
+</body>
+</html>

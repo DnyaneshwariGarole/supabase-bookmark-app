@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Supabase Google Login</title>
+</head>
+<body>
+
+  <h2>Google Login Test</h2>
+  <button id="login">Login with Google</button>
+  <button id="logout">Logout</button>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+    const supabaseUrl = "https://lyefoiimojoelvnzcvzh.supabase.co";
+    const supabaseKey = "YOUR_ANON_PUBLIC_KEY"; 
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    document.getElementById("login").addEventListener("click", async () => {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+      });
+    });
+
+    document.getElementById("logout").addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      alert("Logged out");
+    });
+  </script>
+
+</body>
+</html>
