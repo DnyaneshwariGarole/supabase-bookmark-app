@@ -22,7 +22,7 @@
     const logoutBtn = document.getElementById("logout");
     const userInfoDiv = document.getElementById("user-info");
 
-    // Login using popup (redirect avoid)
+    // Login using popup 
     loginBtn.addEventListener("click", async () => {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
